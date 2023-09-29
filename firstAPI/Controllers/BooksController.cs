@@ -1,7 +1,7 @@
 ﻿using firstAPI.Data;
 using firstAPI.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+
 
 namespace firstAPI.Controllers
 {
@@ -10,10 +10,10 @@ namespace firstAPI.Controllers
     [Route("api/[controller]")] // localhost:port/api/books
     public class BooksController: Controller 
     {
-        private readonly BooksDb _context;
-        public BooksController(BooksDb context) 
-        { 
-            _context = context;
+        private readonly IBookRepository _repository;
+        public BooksController(IBookRepository repository) 
+        {
+            _repository = repository;
         }    
         //GET: api/books
         //ActionResult encapsula la respuesta que le vamos a dar al usuario
@@ -21,14 +21,14 @@ namespace firstAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Book>>> GetBooks()
         {
-            return await _context.Books.ToListAsync();
+            return Ok(await _repository.GetAll());
         }
         //GET: api/books/2
         //decorador con parametro ID
         [HttpGet("{id}")]
         public async Task<ActionResult<Book>> GetBook(int id)
         {
-            var book = await _context.Books.FindAsync(id);
+            var book = await _repository.GetDetails(id);
             if(book == null)
                 return NotFound();
             return book;
@@ -39,8 +39,8 @@ namespace firstAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<Book>> PostBook(Book book)
         {
-           _context.Books.Add(book);
-            await _context.SaveChangesAsync();
+        
+            await _repository.Insert(book);
 
             return CreatedAtAction("GetBook", new { id = book.Id }, book);
         }
@@ -52,29 +52,25 @@ namespace firstAPI.Controllers
             if (id != book.Id)
                 return BadRequest();
 
-            var bookInDb = await _context.Books.FindAsync(id);
+            var bookInDb = await _repository.GetDetails(id);
 
             if (bookInDb == null)
                 return NotFound();
 
 
-            bookInDb.Title = book.Title;
-            bookInDb.Author = book.Author;
-            bookInDb.IsAvailable = book.IsAvailable;
-
-            await _context.SaveChangesAsync();
+            await _repository.Update(book);
 
             return NoContent();
         }
+
         //DELETE: api/books/2
         [HttpDelete("{id}")]
         public async Task<ActionResult<Book>> DeleteBook(int id)
         {
-            var book = await _context.Books.FindAsync(id);
+            var book = await _repository.GetDetails(id);
             if (book == null)
                 return NotFound();
-            _context.Books.Remove(book);
-            await _context.SaveChangesAsync();
+            await _repository.Delete(id);
             return book;
         }
 
